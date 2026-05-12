@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { ChevronDown, Download, Search } from 'lucide-react'
 import AppShell from '../components/AppShell'
 
@@ -7,6 +8,7 @@ const rosterStudents = [
     name: 'Marcus Johnson',
     id: '847291',
     className: 'AP Physics',
+    gradeLevel: '12th Grade',
     score: 94,
     risk: 'At-Risk',
     factors: ['Consecutive Absences', 'Failing Grade'],
@@ -16,6 +18,7 @@ const rosterStudents = [
     name: 'Sarah Chen',
     id: '847292',
     className: 'Calculus II',
+    gradeLevel: '11th Grade',
     score: 88,
     risk: 'At-Risk',
     factors: ['No LMS Activity', 'Low Midterm'],
@@ -25,6 +28,7 @@ const rosterStudents = [
     name: 'David Rodriguez',
     id: '847293',
     className: 'World History',
+    gradeLevel: '10th Grade',
     score: 65,
     risk: 'Monitoring',
     factors: ['Missed Assignment'],
@@ -34,6 +38,7 @@ const rosterStudents = [
     name: 'Emily Watson',
     id: '847294',
     className: 'Literature',
+    gradeLevel: '12th Grade',
     score: 24,
     risk: 'Safe',
     factors: ['Minor Grade Drop'],
@@ -45,6 +50,13 @@ const riskClasses = {
   Monitoring: 'border-blue-200 bg-blue-100 text-blue-700',
   Safe: 'border-emerald-200 bg-emerald-100 text-emerald-700',
 }
+
+const gradeOptions = ['All Grade Levels', '10th Grade', '11th Grade', '12th Grade']
+const classOptions = [
+  'All Classes',
+  ...Array.from(new Set(rosterStudents.map((student) => student.className))),
+]
+const riskOptions = ['All Risk Levels', 'At-Risk', 'Monitoring', 'Safe']
 
 function scoreTone(score) {
   if (score >= 80) {
@@ -67,12 +79,27 @@ function scoreTone(score) {
   }
 }
 
-function FilterSelect({ label }) {
+function FilterSelect({ label, options, value, onChange }) {
   return (
-    <button className="flex h-10 min-w-0 flex-1 items-center justify-between rounded-lg bg-white px-3.5 text-left text-sm text-slate-500 ring-1 ring-transparent transition hover:ring-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-200">
-      <span className="truncate">{label}</span>
-      <ChevronDown size={16} aria-hidden="true" />
-    </button>
+    <label className="relative block min-w-0">
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full appearance-none rounded-lg bg-white px-3.5 pr-9 text-sm text-slate-600 outline-none ring-1 ring-transparent transition hover:ring-blue-100 focus:ring-2 focus:ring-teal-200"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={16}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+        aria-hidden="true"
+      />
+    </label>
   )
 }
 
@@ -106,6 +133,38 @@ function RiskBadge({ risk }) {
 }
 
 export default function StudentRoster() {
+  const [gradeLevel, setGradeLevel] = useState('All Grade Levels')
+  const [className, setClassName] = useState('All Classes')
+  const [riskLevel, setRiskLevel] = useState('All Risk Levels')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredStudents = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+
+    return rosterStudents.filter((student) => {
+      const matchesGrade =
+        gradeLevel === 'All Grade Levels' || student.gradeLevel === gradeLevel
+      const matchesClass =
+        className === 'All Classes' || student.className === className
+      const matchesRisk =
+        riskLevel === 'All Risk Levels' || student.risk === riskLevel
+      const searchableText = [
+        student.name,
+        student.id,
+        student.className,
+        student.gradeLevel,
+        student.risk,
+        ...student.factors,
+      ]
+        .join(' ')
+        .toLowerCase()
+      const matchesSearch =
+        normalizedQuery === '' || searchableText.includes(normalizedQuery)
+
+      return matchesGrade && matchesClass && matchesRisk && matchesSearch
+    })
+  }, [className, gradeLevel, riskLevel, searchQuery])
+
   return (
     <AppShell activeView="roster">
       <section className="mx-auto w-full max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
@@ -127,9 +186,24 @@ export default function StudentRoster() {
 
         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-4 sm:px-6">
           <div className="grid gap-3 lg:grid-cols-4">
-            <FilterSelect label="Grade Level" />
-            <FilterSelect label="Class" />
-            <FilterSelect label="Risk Level" />
+            <FilterSelect
+              label="Grade Level"
+              options={gradeOptions}
+              value={gradeLevel}
+              onChange={setGradeLevel}
+            />
+            <FilterSelect
+              label="Class"
+              options={classOptions}
+              value={className}
+              onChange={setClassName}
+            />
+            <FilterSelect
+              label="Risk Level"
+              options={riskOptions}
+              value={riskLevel}
+              onChange={setRiskLevel}
+            />
             <label className="relative block">
               <span className="sr-only">Search student name or ID</span>
               <Search
@@ -139,6 +213,8 @@ export default function StudentRoster() {
               />
               <input
                 type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search student name or ID..."
                 className="h-10 w-full rounded-lg bg-white pl-10 pr-3 text-sm text-slate-700 outline-none ring-1 ring-transparent transition placeholder:text-slate-500 focus:ring-2 focus:ring-teal-200"
               />
@@ -159,7 +235,7 @@ export default function StudentRoster() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {rosterStudents.map((student) => (
+                {filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50/80">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -201,6 +277,16 @@ export default function StudentRoster() {
                     </td>
                   </tr>
                 ))}
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="5"
+                      className="px-6 py-12 text-center text-sm font-medium text-slate-500"
+                    >
+                      No students match the current search and filters.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>

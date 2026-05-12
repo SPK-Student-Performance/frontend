@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ClassAnalytics from './pages/ClassAnalytics'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import StudentRoster from './pages/StudentRoster'
@@ -7,7 +8,12 @@ import TeacherDashboard from './pages/TeacherDashboard'
 const getView = () => {
   const route = window.location.hash.replace('#', '')
 
-  if (route === 'register' || route === 'dashboard' || route === 'roster') {
+  if (
+    route === 'register' ||
+    route === 'dashboard' ||
+    route === 'roster' ||
+    route === 'analytics'
+  ) {
     return route
   }
 
@@ -31,6 +37,10 @@ function App() {
 
   if (view === 'roster') {
     return <StudentRoster />
+  }
+
+  if (view === 'analytics') {
+    return <ClassAnalytics />
   }
 
   return view === 'register' ? <Register /> : <Login />

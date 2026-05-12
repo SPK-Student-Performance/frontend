@@ -7,6 +7,7 @@ export default function Login() {
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    window.location.hash = 'dashboard'
   }
 
   return (

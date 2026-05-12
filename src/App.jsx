@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import TeacherDashboard from './pages/TeacherDashboard'
 
-const getAuthView = () =>
-  window.location.hash.replace('#', '') === 'register' ? 'register' : 'login'
+const getView = () => {
+  const route = window.location.hash.replace('#', '')
+
+  if (route === 'register' || route === 'dashboard') {
+    return route
+  }
+
+  return 'login'
+}
 
 function App() {
-  const [authView, setAuthView] = useState(getAuthView)
+  const [view, setView] = useState(getView)
 
   useEffect(() => {
-    const handleHashChange = () => setAuthView(getAuthView())
+    const handleHashChange = () => setView(getView())
 
     window.addEventListener('hashchange', handleHashChange)
 
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  return authView === 'register' ? <Register /> : <Login />
+  if (view === 'dashboard') {
+    return <TeacherDashboard />
+  }
+
+  return view === 'register' ? <Register /> : <Login />
 }
 
 export default App

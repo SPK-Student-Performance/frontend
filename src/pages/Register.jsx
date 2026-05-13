@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2, Lock, Mail, User } from 'lucide-react'
 import { register } from '../services/authService'
-import logoImg from '../assets/logo.png'
+import logoImg from '../assets/logo_teks.png'
 
 export default function Register() {
   const [fullName, setFullName] = useState('')
@@ -46,12 +46,12 @@ export default function Register() {
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
         <section className="w-full text-center" aria-label="Artha register">
           <article className="rounded-2xl border border-primary-200 bg-white p-6 shadow-lg shadow-primary-200/40 sm:p-8">
-            <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-16 w-16 object-contain" />
+            <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-48 w-full object-contain" />
 
-            <header className="mb-7">
-              <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-950">
+            <header className="mb-4">
+              {/* <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-950">
                 Artha
-              </h1>
+              </h1> */}
               <p className="mt-1.5 text-xs font-semibold tracking-widest text-secondary-500 uppercase">
                 Create Your Account
               </p>

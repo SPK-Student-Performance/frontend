@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react'
 import { login } from '../services/authService'
-import logoImg from '../assets/logo.png'
+import logoImg from '../assets/logo_teks.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -30,16 +30,16 @@ export default function Login() {
         <section className="w-full text-center" aria-label="Artha login">
           <article className="rounded-2xl border border-primary-200 bg-white p-6 shadow-lg shadow-primary-200/40 sm:p-8">
             {/* Logo */}
-            <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-16 w-16 object-contain" />
+            <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-48 w-full object-contain" />
 
-            <header className="mb-7">
+            {/* <header className="mb-7">
               <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-950">
                 Artha
               </h1>
               <p className="mt-1.5 text-xs font-semibold tracking-widest text-secondary-500 uppercase">
                 Student Decision Support System
               </p>
-            </header>
+            </header> */}
 
             {error && (
               <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">

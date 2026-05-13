@@ -1,82 +1,31 @@
-import { useMemo, useState } from 'react'
-import { ChevronDown, Download, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Plus,
+  RefreshCw,
+  Search,
+  Upload,
+  Users,
+} from 'lucide-react'
+import * as XLSX from 'xlsx'
 import AppShell from '../components/AppShell'
-
-const rosterStudents = [
-  {
-    initials: 'MJ',
-    name: 'Marcus Johnson',
-    id: '847291',
-    className: 'AP Physics',
-    gradeLevel: '12th Grade',
-    score: 94,
-    risk: 'At-Risk',
-    factors: ['Consecutive Absences', 'Failing Grade'],
-  },
-  {
-    initials: 'SC',
-    name: 'Sarah Chen',
-    id: '847292',
-    className: 'Calculus II',
-    gradeLevel: '11th Grade',
-    score: 88,
-    risk: 'At-Risk',
-    factors: ['No LMS Activity', 'Low Midterm'],
-  },
-  {
-    initials: 'DR',
-    name: 'David Rodriguez',
-    id: '847293',
-    className: 'World History',
-    gradeLevel: '10th Grade',
-    score: 65,
-    risk: 'Monitoring',
-    factors: ['Missed Assignment'],
-  },
-  {
-    initials: 'EW',
-    name: 'Emily Watson',
-    id: '847294',
-    className: 'Literature',
-    gradeLevel: '12th Grade',
-    score: 24,
-    risk: 'Safe',
-    factors: ['Minor Grade Drop'],
-  },
-]
+import StudentModal from '../components/StudentModal'
+import { getStudents, addStudent } from '../services/studentService'
 
 const riskClasses = {
-  'At-Risk': 'border-red-200 bg-red-100 text-red-700',
-  Monitoring: 'border-blue-200 bg-blue-100 text-blue-700',
-  Safe: 'border-emerald-200 bg-emerald-100 text-emerald-700',
+  High: 'border-red-200 bg-red-100 text-red-700',
+  Medium: 'border-tertiary-200 bg-tertiary-100 text-tertiary-700',
+  Low: 'border-emerald-200 bg-emerald-100 text-emerald-700',
 }
 
-const gradeOptions = ['All Grade Levels', '10th Grade', '11th Grade', '12th Grade']
-const classOptions = [
-  'All Classes',
-  ...Array.from(new Set(rosterStudents.map((student) => student.className))),
-]
-const riskOptions = ['All Risk Levels', 'At-Risk', 'Monitoring', 'Safe']
-
 function scoreTone(score) {
-  if (score >= 80) {
-    return {
-      text: 'text-red-600',
-      bar: 'bg-red-500',
-    }
-  }
-
-  if (score >= 50) {
-    return {
-      text: 'text-orange-600',
-      bar: 'bg-orange-500',
-    }
-  }
-
-  return {
-    text: 'text-emerald-600',
-    bar: 'bg-emerald-500',
-  }
+  if (score >= 80) return { text: 'text-red-600', bar: 'bg-red-500' }
+  if (score >= 50) return { text: 'text-tertiary-600', bar: 'bg-tertiary-500' }
+  return { text: 'text-emerald-600', bar: 'bg-emerald-500' }
 }
 
 function FilterSelect({ label, options, value, onChange }) {
@@ -85,212 +34,363 @@ function FilterSelect({ label, options, value, onChange }) {
       <span className="sr-only">{label}</span>
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full appearance-none rounded-lg bg-white px-3.5 pr-9 text-sm text-slate-600 outline-none ring-1 ring-transparent transition hover:ring-blue-100 focus:ring-2 focus:ring-teal-200"
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 w-full appearance-none rounded-xl bg-white px-3.5 pr-9 text-sm font-medium text-secondary-700 outline-none ring-1 ring-transparent transition hover:ring-primary-200 focus:ring-2 focus:ring-primary-300"
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+        {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
-      <ChevronDown
-        size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
-        aria-hidden="true"
-      />
+      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-secondary-400" />
     </label>
   )
 }
 
 function PriorityScore({ score }) {
   const tone = scoreTone(score)
-
   return (
-    <div className="flex min-w-[220px] items-center gap-3">
-      <div className="w-16 whitespace-nowrap">
-        <span className={`text-2xl font-bold ${tone.text}`}>{score}</span>
-        <span className="ml-0.5 text-sm text-slate-400">/100</span>
+    <div className="flex min-w-[200px] items-center gap-3">
+      <div className="w-14 whitespace-nowrap">
+        <span className={`text-xl font-extrabold ${tone.text}`}>{Math.round(score)}</span>
+        <span className="ml-0.5 text-xs text-secondary-400">%</span>
       </div>
-      <div className="h-2 flex-1 rounded-full bg-gray-200">
-        <div
-          className={`h-full rounded-full ${tone.bar}`}
-          style={{ width: `${score}%` }}
-        />
+      <div className="h-2 flex-1 rounded-full bg-primary-100">
+        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.min(score, 100)}%` }} />
       </div>
     </div>
   )
 }
 
 function RiskBadge({ risk }) {
+  const style = riskClasses[risk] || 'border-secondary-200 bg-secondary-100 text-secondary-700'
+  return <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-bold ${style}`}>{risk}</span>
+}
+
+function LoadingSkeleton() {
   return (
-    <span
-      className={`inline-flex rounded-lg border px-2 py-1 text-xs font-semibold ${riskClasses[risk]}`}
-    >
-      {risk}
-    </span>
+    <section className="mx-auto w-full max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+      <div className="mb-7">
+        <div className="h-9 w-48 animate-pulse rounded-xl bg-primary-100" />
+        <div className="mt-3 h-5 w-80 animate-pulse rounded-xl bg-primary-100" />
+      </div>
+      <div className="h-16 animate-pulse rounded-2xl bg-primary-100" />
+      <div className="mt-6 space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-primary-50 border border-primary-100" />)}
+      </div>
+    </section>
+  )
+}
+
+function ErrorState({ message, onRetry }) {
+  return (
+    <section className="mx-auto w-full max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-6 py-16 text-center">
+        <AlertCircle size={48} className="mb-4 text-red-400" />
+        <h3 className="font-heading text-lg font-bold text-red-800">Gagal Memuat Data Siswa</h3>
+        <p className="mt-2 max-w-md text-sm text-red-600">{message}</p>
+        <button onClick={onRetry} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700">
+          <RefreshCw size={16} /> Coba Lagi
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function EmptyState({ onAdd }) {
+  return (
+    <section className="mx-auto w-full max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+      <div className="mb-7">
+        <h2 className="font-heading text-3xl font-extrabold text-primary-950">Student Roster</h2>
+        <p className="mt-2 text-base text-secondary-600">Prioritized list of students requiring intervention.</p>
+      </div>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-primary-200 bg-white px-6 py-16 text-center shadow-sm">
+        <Upload size={48} className="mb-4 text-primary-300" />
+        <h3 className="font-heading text-lg font-bold text-primary-950">Belum Ada Data Siswa</h3>
+        <p className="mt-2 max-w-md text-sm text-secondary-500">Upload file CSV data siswa atau tambah secara manual untuk melihat daftar siswa beserta analisis risikonya.</p>
+        <div className="mt-6 flex gap-3">
+          <a href="#upload" className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800">
+            Upload CSV
+          </a>
+          <button onClick={onAdd} className="inline-flex items-center gap-2 rounded-xl border border-primary-700 px-5 py-2.5 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+            <Plus size={16} /> Tambah Siswa
+          </button>
+        </div>
+      </div>
+    </section>
   )
 }
 
 export default function StudentRoster() {
-  const [gradeLevel, setGradeLevel] = useState('All Grade Levels')
-  const [className, setClassName] = useState('All Classes')
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [riskLevel, setRiskLevel] = useState('All Risk Levels')
+  const [gradeFilter, setGradeFilter] = useState('All Grades')
+  const [genderFilter, setGenderFilter] = useState('All Genders')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const fetchData = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await getStudents()
+      setStudents(result?.data || [])
+    } catch (err) {
+      setError(err.message || 'Gagal memuat data siswa.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchData() }, [])
+
+  // Sync Search Query with global Hash
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash.startsWith('#roster?q=')) {
+        setSearchQuery(decodeURIComponent(hash.split('?q=')[1] || ''))
+      } else if (hash === '#roster') {
+        setSearchQuery('')
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    handleHashChange()
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  const handleAddStudent = async (data) => {
+    setIsSubmitting(true)
+    try {
+      await addStudent(data)
+      setIsAddModalOpen(false)
+      fetchData() // Refresh list
+    } catch (err) {
+      alert(err.message || 'Gagal menambahkan siswa')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const uniqueStudents = useMemo(() => {
+    const studentMap = new Map()
+    students.forEach(item => {
+      const existing = studentMap.get(item.student?.student_id)
+      if (!existing || new Date(item.prediction?.created_at) > new Date(existing.prediction?.created_at)) {
+        studentMap.set(item.student?.student_id, item)
+      }
+    })
+    return Array.from(studentMap.values())
+  }, [students])
+
+  const handleExport = (format) => {
+    if (uniqueStudents.length === 0) return
+
+    const exportData = sortedStudents.map(item => {
+      const s = item.student
+      const p = item.prediction
+      return {
+        'Student ID': s.student_identifier,
+        'Risk Level': p?.risk_level,
+        'Risk Probability (%)': p?.risk_probability ? (p.risk_probability * 100).toFixed(1) : 0,
+        'Flags': Array.isArray(p?.flags) ? p.flags.join(', ') : '',
+        'Age': s.age,
+        'Grade': s.grade,
+        'Gender': s.gender,
+        'GPA': s.gpa,
+        'Attendance Rate': s.attendance_rate,
+      }
+    })
+
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Students")
+
+    if (format === 'csv') {
+      XLSX.writeFile(wb, "Artha_Students.csv")
+    } else {
+      XLSX.writeFile(wb, "Artha_Students.xlsx")
+    }
+  }
+
+  const riskOptions = useMemo(() => ['All Risk Levels', ...Array.from(new Set(uniqueStudents.map(s => s.prediction?.risk_level).filter(Boolean)))], [uniqueStudents])
+  const gradeOptions = useMemo(() => ['All Grades', ...Array.from(new Set(uniqueStudents.map(s => s.student?.grade).filter(Boolean))).sort((a,b) => a-b)], [uniqueStudents])
+  const genderOptions = useMemo(() => ['All Genders', ...Array.from(new Set(uniqueStudents.map(s => s.student?.gender).filter(Boolean)))], [uniqueStudents])
 
   const filteredStudents = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase()
+    const q = searchQuery.trim().toLowerCase()
+    return uniqueStudents.filter((item) => {
+      const matchesRisk = riskLevel === 'All Risk Levels' || item.prediction?.risk_level === riskLevel
+      const matchesGrade = gradeFilter === 'All Grades' || String(item.student?.grade) === String(gradeFilter)
+      const matchesGender = genderFilter === 'All Genders' || item.student?.gender === genderFilter
 
-    return rosterStudents.filter((student) => {
-      const matchesGrade =
-        gradeLevel === 'All Grade Levels' || student.gradeLevel === gradeLevel
-      const matchesClass =
-        className === 'All Classes' || student.className === className
-      const matchesRisk =
-        riskLevel === 'All Risk Levels' || student.risk === riskLevel
-      const searchableText = [
-        student.name,
-        student.id,
-        student.className,
-        student.gradeLevel,
-        student.risk,
-        ...student.factors,
-      ]
-        .join(' ')
-        .toLowerCase()
-      const matchesSearch =
-        normalizedQuery === '' || searchableText.includes(normalizedQuery)
-
-      return matchesGrade && matchesClass && matchesRisk && matchesSearch
+      if (!matchesRisk || !matchesGrade || !matchesGender) return false
+      if (q === '') return true
+      return [item.student?.student_identifier, item.student?.student_id, item.prediction?.risk_level].filter(Boolean).join(' ').toLowerCase().includes(q)
     })
-  }, [className, gradeLevel, riskLevel, searchQuery])
+  }, [uniqueStudents, riskLevel, gradeFilter, genderFilter, searchQuery])
+
+  const sortedStudents = useMemo(() => {
+    return [...filteredStudents].sort((a, b) => {
+      const order = { High: 0, Medium: 1, Low: 2 }
+      const d = (order[a.prediction?.risk_level] ?? 3) - (order[b.prediction?.risk_level] ?? 3)
+      return d !== 0 ? d : (b.prediction?.risk_probability || 0) - (a.prediction?.risk_probability || 0)
+    })
+  }, [filteredStudents])
+
+  // Reset pagination if filters change
+  useEffect(() => { setCurrentPage(1) }, [filteredStudents.length])
+
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return sortedStudents.slice(start, start + itemsPerPage)
+  }, [sortedStudents, currentPage])
+
+  const totalPages = Math.ceil(sortedStudents.length / itemsPerPage) || 1
+
+  if (loading) return <AppShell activeView="roster"><LoadingSkeleton /></AppShell>
+  if (error) return <AppShell activeView="roster"><ErrorState message={error} onRetry={fetchData} /></AppShell>
+  
+  if (students.length === 0 && !isAddModalOpen) {
+    return <AppShell activeView="roster"><EmptyState onAdd={() => setIsAddModalOpen(true)} /></AppShell>
+  }
 
   return (
     <AppShell activeView="roster">
       <section className="mx-auto w-full max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">
-              Student Roster
-            </h2>
-            <p className="mt-2 max-w-3xl text-base leading-6 text-slate-600">
-              Prioritized list of students requiring intervention based on
-              academic, attendance, and behavioral scores.
-            </p>
+            <h2 className="font-heading text-3xl font-extrabold text-primary-950">Student Roster</h2>
+            <p className="mt-2 max-w-3xl text-base leading-6 text-secondary-600">Prioritized list of unique students requiring intervention.</p>
           </div>
-          <button className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
-            <Download size={16} aria-hidden="true" />
-            Export CSV
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary-700 px-4 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800">
+              <Plus size={16} /> Add Student
+            </button>
+            <div className="group relative">
+              <button className="inline-flex h-10 items-center gap-2 rounded-xl border border-secondary-300 bg-white px-4 text-sm font-bold text-secondary-700 shadow-sm transition hover:bg-secondary-50">
+                <Download size={16} /> Export
+              </button>
+              <div className="absolute right-0 top-full z-10 mt-2 hidden w-32 flex-col overflow-hidden rounded-xl border border-primary-200 bg-white shadow-lg group-hover:flex">
+                <button onClick={() => handleExport('csv')} className="px-4 py-2 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50">CSV</button>
+                <button onClick={() => handleExport('xlsx')} className="px-4 py-2 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50">Excel (XLSX)</button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-4 sm:px-6">
-          <div className="grid gap-3 lg:grid-cols-4">
-            <FilterSelect
-              label="Grade Level"
-              options={gradeOptions}
-              value={gradeLevel}
-              onChange={setGradeLevel}
-            />
-            <FilterSelect
-              label="Class"
-              options={classOptions}
-              value={className}
-              onChange={setClassName}
-            />
-            <FilterSelect
-              label="Risk Level"
-              options={riskOptions}
-              value={riskLevel}
-              onChange={setRiskLevel}
-            />
+        {/* Filter Bar */}
+        <div className="rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 sm:px-6">
+          <div className="grid gap-3 lg:grid-cols-4 lg:items-center">
+            <FilterSelect label="Risk Level" options={riskOptions} value={riskLevel} onChange={setRiskLevel} />
+            <FilterSelect label="Grade" options={gradeOptions} value={gradeFilter} onChange={setGradeFilter} />
+            <FilterSelect label="Gender" options={genderOptions} value={genderFilter} onChange={setGenderFilter} />
             <label className="relative block">
-              <span className="sr-only">Search student name or ID</span>
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                aria-hidden="true"
-              />
+              <span className="sr-only">Search student</span>
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
               <input
                 type="search"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search student name or ID..."
-                className="h-10 w-full rounded-lg bg-white pl-10 pr-3 text-sm text-slate-700 outline-none ring-1 ring-transparent transition placeholder:text-slate-500 focus:ring-2 focus:ring-teal-200"
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search identifier or ID..."
+                className="h-10 w-full rounded-xl bg-white pl-10 pr-3 text-sm text-primary-950 outline-none ring-1 ring-transparent transition placeholder:text-secondary-400 focus:ring-2 focus:ring-primary-300"
               />
             </label>
           </div>
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse text-left">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
-                <tr>
-                  <th className="px-6 py-4">Student</th>
-                  <th className="px-6 py-4">DSS Priority Score</th>
-                  <th className="px-6 py-4">Risk Level</th>
-                  <th className="px-6 py-4">Key Factors</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50/80">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                          {student.initials}
-                        </span>
-                        <div>
-                          <p className="text-base font-bold text-slate-900">
-                            {student.name}
-                          </p>
-                          <p className="mt-0.5 text-sm text-slate-500">
-                            ID: {student.id} • {student.className}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <PriorityScore score={student.score} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <RiskBadge risk={student.risk} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {student.factors.map((factor) => (
-                          <span
-                            key={factor}
-                            className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs text-slate-700"
-                          >
-                            {factor}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="rounded-lg border border-teal-600 bg-white px-3 py-2 text-sm font-medium text-teal-600 transition hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-200">
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filteredStudents.length === 0 ? (
+        {/* Student Table */}
+        {uniqueStudents.length > 0 && (
+          <section className="mt-6 overflow-hidden rounded-2xl border border-primary-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] border-collapse text-left">
+                <thead className="border-b border-primary-100 bg-primary-50 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
                   <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-12 text-center text-sm font-medium text-slate-500"
-                    >
-                      No students match the current search and filters.
-                    </td>
+                    <th className="px-6 py-4">Student</th>
+                    <th className="px-6 py-4">Risk Probability</th>
+                    <th className="px-6 py-4">Risk Level</th>
+                    <th className="px-6 py-4">Risk Flags</th>
+                    <th className="px-6 py-4 text-right">Action</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody className="divide-y divide-primary-100">
+                  {paginatedStudents.map((item) => {
+                    const s = item.student, p = item.prediction
+                    const riskProb = p?.risk_probability != null ? (p.risk_probability * 100) : 0
+                    const flags = Array.isArray(p?.flags) ? p.flags : []
+                    const initials = (s?.student_identifier || 'XX').substring(0, 2).toUpperCase()
+
+                    return (
+                      <tr key={s?.student_id} className="hover:bg-primary-50/50 transition">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-sm font-bold text-primary-700">{initials}</span>
+                            <div>
+                              <p className="text-base font-bold text-primary-950">{s?.student_identifier || 'Unknown'}</p>
+                              <p className="mt-0.5 text-sm text-secondary-500">Grade {s?.grade} • Age {s?.age}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4"><PriorityScore score={riskProb} /></td>
+                        <td className="px-6 py-4"><RiskBadge risk={p?.risk_level || 'Unknown'} /></td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {flags.length > 0
+                              ? flags.slice(0, 3).map((f, i) => <span key={i} className="rounded-lg bg-primary-50 border border-primary-200 px-2 py-1 text-xs font-medium text-secondary-700">{f}</span>)
+                              : <span className="text-xs text-secondary-400">No flags</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <a href={`#student/${s?.student_id}`} className="rounded-xl border border-primary-700 bg-white px-3.5 py-2 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                            View Details
+                          </a>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {paginatedStudents.length === 0 && (
+                    <tr><td colSpan="5" className="px-6 py-12 text-center text-sm font-medium text-secondary-500">No students match the current search and filters.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            {sortedStudents.length > itemsPerPage && (
+              <div className="flex items-center justify-between border-t border-primary-100 bg-white px-6 py-4">
+                <p className="text-sm text-secondary-500">
+                  Showing <span className="font-bold text-primary-950">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-primary-950">{Math.min(currentPage * itemsPerPage, sortedStudents.length)}</span> of <span className="font-bold text-primary-950">{sortedStudents.length}</span> results
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-secondary-200 text-secondary-600 hover:bg-primary-50 disabled:opacity-50 transition"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-secondary-200 text-secondary-600 hover:bg-primary-50 disabled:opacity-50 transition"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <StudentModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleAddStudent}
+          loading={isSubmitting}
+        />
       </section>
     </AppShell>
   )

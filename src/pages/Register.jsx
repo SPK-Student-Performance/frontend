@@ -1,168 +1,139 @@
 import { useState } from 'react'
-import { ArrowRight, GraduationCap, Lock, Mail, User } from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, Loader2, Lock, Mail, User } from 'lucide-react'
+import { register } from '../services/authService'
+import logoImg from '../assets/logo.png'
 
 export default function Register() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    window.location.hash = 'dashboard'
+    setError('')
+    setSuccess('')
+
+    if (password !== confirmPassword) {
+      setError('Password dan konfirmasi password tidak cocok.')
+      return
+    }
+    if (password.length < 6) {
+      setError('Password minimal 6 karakter.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await register(email, password, fullName)
+      setSuccess('Registrasi berhasil! Mengalihkan ke halaman login...')
+      setTimeout(() => { window.location.hash = 'login' }, 1500)
+    } catch (err) {
+      setError(err.message || 'Registrasi gagal. Silakan coba lagi.')
+    } finally {
+      setLoading(false)
+    }
   }
 
+  const inputClass =
+    'w-full rounded-xl border border-secondary-200 bg-primary-50/50 py-3 pl-10 pr-3 text-sm text-primary-950 placeholder:text-secondary-400 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:opacity-60'
+
   return (
-    <main className="min-h-screen bg-[#f8f9ff] px-4 py-10 sm:px-6">
+    <main className="min-h-screen bg-primary-50 px-4 py-10 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
         <section className="w-full text-center" aria-label="Artha register">
-          <article className="rounded-xl border border-gray-200/90 bg-white p-6 shadow-sm sm:p-7">
-            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-slate-900 text-white">
-              <GraduationCap size={18} aria-hidden="true" />
-            </div>
+          <article className="rounded-2xl border border-primary-200 bg-white p-6 shadow-lg shadow-primary-200/40 sm:p-8">
+            <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-16 w-16 object-contain" />
 
-            <header className="mb-6">
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+            <header className="mb-7">
+              <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-950">
                 Artha
               </h1>
-              <p className="mt-1 text-xs font-medium tracking-wide text-slate-500">
-                Student Decision Support System
+              <p className="mt-1.5 text-xs font-semibold tracking-widest text-secondary-500 uppercase">
+                Create Your Account
               </p>
             </header>
 
-            <form className="space-y-4 text-left" onSubmit={handleSubmit}>
+            {error && (
+              <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+            {success && (
+              <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm text-emerald-700">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                <span>{success}</span>
+              </div>
+            )}
+
+            <form className="space-y-5 text-left" onSubmit={handleSubmit}>
               <div>
-                <label
-                  htmlFor="fullName"
-                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500"
-                >
+                <label htmlFor="fullName" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User
-                    size={14}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    autoComplete="name"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    placeholder="John Smith"
-                    className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                    required
-                  />
+                  <User size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
+                  <input id="fullName" type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Smith" className={inputClass} required disabled={loading} />
                 </div>
               </div>
 
               <div>
-                <label
-                  htmlFor="registerEmail"
-                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500"
-                >
-                  Email Address
+                <label htmlFor="registerEmail" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
+                  Username
                 </label>
                 <div className="relative">
-                  <Mail
-                    size={14}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="registerEmail"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="teacher@artha.edu"
-                    className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                    required
-                  />
+                  <Mail size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
+                  <input id="registerEmail" type="text" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teacher@artha.edu" className={inputClass} required disabled={loading} />
                 </div>
               </div>
 
               <div>
-                <label
-                  htmlFor="registerPassword"
-                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500"
-                >
+                <label htmlFor="registerPassword" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={14}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="registerPassword"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="********"
-                    className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                    required
-                  />
+                  <Lock size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
+                  <input id="registerPassword" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClass} required disabled={loading} />
                 </div>
               </div>
 
               <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-500"
-                >
+                <label htmlFor="confirmPassword" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    size={14}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) =>
-                      setConfirmPassword(event.target.value)
-                    }
-                    placeholder="********"
-                    className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                    required
-                  />
+                  <Lock size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
+                  <input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputClass} required disabled={loading} />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-black px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+                disabled={loading}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-700 px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Create Account
-                <ArrowRight size={13} aria-hidden="true" />
+                {loading ? (
+                  <><Loader2 size={15} className="animate-spin" /> Creating Account...</>
+                ) : (
+                  <>Create Account <ArrowRight size={14} /></>
+                )}
               </button>
             </form>
 
-            <p className="mt-6 border-t border-gray-200 pt-4 text-center text-[10px] font-medium tracking-wide text-slate-500">
+            <p className="mt-7 border-t border-primary-100 pt-5 text-center text-[11px] font-semibold tracking-wide text-secondary-500">
               Already have an account?{' '}
-              <a
-                href="#login"
-                className="text-cyan-700 transition hover:text-cyan-800 focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-cyan-200"
-              >
+              <a href="#login" className="text-tertiary-700 transition hover:text-tertiary-600">
                 Sign In
               </a>
             </p>
           </article>
 
-          <footer className="mt-4 text-[9px] font-medium uppercase tracking-[0.13em] text-slate-400">
-            ARTHA STUDENT DECISION SUPPORT SYSTEM • V1.0
+          <footer className="mt-5 text-[9px] font-bold uppercase tracking-[0.15em] text-secondary-400">
+            Artha Student Decision Support System • V1.0
           </footer>
         </section>
       </div>

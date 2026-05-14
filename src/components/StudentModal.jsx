@@ -26,7 +26,16 @@ const features = [
   { name: 'go_out', label: 'Go Out (1-5)', type: 'number', min: 1, max: 5, help: 'Frekuensi keluar main (1=Jarang, 5=Sering)' },
 ]
 
-export default function StudentModal({ isOpen, onClose, onSubmit, initialData = null, loading = false }) {
+export default function StudentModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData = null,
+  loading = false,
+  title,
+  submitLabel,
+  lockedFields = [],
+}) {
   const [formData, setFormData] = useState({})
 
   useEffect(() => {
@@ -72,7 +81,7 @@ export default function StudentModal({ isOpen, onClose, onSubmit, initialData = 
       <div className="relative w-full max-w-4xl rounded-2xl border border-primary-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-primary-100 bg-primary-50/50 px-6 py-4 rounded-t-2xl">
           <h3 className="font-heading text-xl font-bold text-primary-950">
-            {initialData ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
+            {title || (initialData ? 'Edit Data Siswa' : 'Tambah Siswa Baru')}
           </h3>
           <button
             onClick={onClose}
@@ -100,7 +109,8 @@ export default function StudentModal({ isOpen, onClose, onSubmit, initialData = 
                     value={formData[f.name] !== undefined ? String(formData[f.name]) : ''}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2 text-sm text-primary-950 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    disabled={lockedFields.includes(f.name)}
+                    className="w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2 text-sm text-primary-950 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {f.options.map(opt => <option key={opt} value={opt}>{opt === '1' ? '1 (Yes)' : opt === '0' ? '0 (No)' : opt}</option>)}
                   </select>
@@ -115,7 +125,8 @@ export default function StudentModal({ isOpen, onClose, onSubmit, initialData = 
                     max={f.max}
                     step={f.step}
                     required
-                    className="w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2 text-sm text-primary-950 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    disabled={lockedFields.includes(f.name)}
+                    className="w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2 text-sm text-primary-950 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 )}
                 <p className="mt-1 text-[10px] font-semibold text-secondary-500">{f.help}</p>
@@ -138,7 +149,7 @@ export default function StudentModal({ isOpen, onClose, onSubmit, initialData = 
               className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800 disabled:opacity-60"
             >
               {loading && <Loader2 size={16} className="animate-spin" />}
-              {initialData ? 'Simpan & Analisis Ulang' : 'Tambah & Analisis AI'}
+              {submitLabel || (initialData ? 'Simpan & Analisis Ulang' : 'Tambah & Analisis AI')}
             </button>
           </div>
         </form>
@@ -146,4 +157,3 @@ export default function StudentModal({ isOpen, onClose, onSubmit, initialData = 
     </div>
   )
 }
-

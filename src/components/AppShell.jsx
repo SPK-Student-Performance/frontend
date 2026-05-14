@@ -1,20 +1,19 @@
 import { useState, useEffect } from 'react'
 import {
   BarChart3,
-  Bell,
   CheckCircle2,
   CircleHelp,
+  Edit2,
   LayoutDashboard,
   Loader2,
   LogOut,
-  Search,
-  Settings,
   Upload,
   Users,
   X,
   AlertCircle,
 } from 'lucide-react'
-import { logout } from '../services/authService'
+import { getCurrentUser, logout, updateProfile } from '../services/authService'
+import { dismissUploadTaskStatus, subscribeUploadTask } from '../services/uploadTaskStore'
 import logoImg from '../assets/logo.png'
 
 const navItems = [
@@ -44,19 +43,44 @@ function SidebarLink({ item, activeView }) {
 }
 
 export default function AppShell({ activeView, children }) {
-  const [searchValue, setSearchValue] = useState('')
   const [uploadStatus, setUploadStatus] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileForm, setProfileForm] = useState({ username: '', fullName: '' })
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState('')
 
   useEffect(() => {
-    const handleUploadEvent = (e) => {
-      setUploadStatus(e.detail)
-      if (!e.detail?.loading) {
-        // Auto dismiss after 5s if done or error
-        setTimeout(() => setUploadStatus(null), 5000)
+    let dismissTimer = null
+    const unsubscribe = subscribeUploadTask(({ status }) => {
+      setUploadStatus(status)
+      if (dismissTimer) {
+        clearTimeout(dismissTimer)
       }
+      if (status && !status.loading) {
+        // Auto dismiss after 5s if done or error
+        dismissTimer = setTimeout(() => dismissUploadTaskStatus(), 5000)
+      }
+    })
+    return () => {
+      if (dismissTimer) {
+        clearTimeout(dismissTimer)
+      }
+      unsubscribe()
     }
-    window.addEventListener('csv-upload-status', handleUploadEvent)
-    return () => window.removeEventListener('csv-upload-status', handleUploadEvent)
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    getCurrentUser()
+      .then((res) => {
+        if (ignore) return
+        const user = res?.user
+        setProfile(user)
+        setProfileForm({ username: user?.username || '', fullName: user?.full_name || '' })
+      })
+      .catch(() => {})
+    return () => { ignore = true }
   }, [])
 
   const handleLogout = (e) => {
@@ -64,12 +88,28 @@ export default function AppShell({ activeView, children }) {
     logout()
   }
 
-  const handleSearch = (e) => {
+  const initials = (profile?.full_name || profile?.username || 'Teacher')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((item) => item[0])
+    .join('')
+    .toUpperCase() || 'T'
+
+  const handleProfileSubmit = async (e) => {
     e.preventDefault()
-    if (searchValue.trim()) {
-      window.location.hash = `#roster?q=${encodeURIComponent(searchValue.trim())}`
-    } else {
-      window.location.hash = `#roster`
+    setProfileLoading(true)
+    setProfileError('')
+    try {
+      const res = await updateProfile(profileForm)
+      const user = res?.user
+      setProfile(user)
+      setProfileForm({ username: user?.username || '', fullName: user?.full_name || '' })
+      setProfileOpen(false)
+    } catch (err) {
+      setProfileError(err.message || 'Gagal memperbarui profil.')
+    } finally {
+      setProfileLoading(false)
     }
   }
 
@@ -130,42 +170,29 @@ export default function AppShell({ activeView, children }) {
       </aside>
 
       {/* ─── Main Content ─── */}
-      <div className="lg:pl-64">
+      <div className="pb-24 lg:pb-0 lg:pl-64">
         {/* Top Bar */}
         <header className="sticky top-0 z-10 border-b border-primary-200/60 bg-white/80 px-4 py-3.5 backdrop-blur-md sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <form onSubmit={handleSearch} className="relative block w-full max-w-sm">
-              <span className="sr-only">Search dashboard</span>
-              <Search
-                size={17}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search students (Press Enter)..."
-                className="h-10 w-full rounded-xl border border-secondary-200 bg-primary-50/60 pl-10 pr-3 text-sm text-primary-950 outline-none transition placeholder:text-secondary-400 focus:border-primary-500 focus:bg-white focus:ring-2 focus:ring-primary-200"
-              />
-            </form>
-
-            <div className="flex items-center gap-3">
-              <button
-                className="rounded-lg p-2 text-secondary-500 transition hover:bg-primary-100 hover:text-primary-700"
-                aria-label="Notifications"
-              >
-                <Bell size={18} />
-              </button>
-              <button
-                className="rounded-lg p-2 text-secondary-500 transition hover:bg-primary-100 hover:text-primary-700"
-                aria-label="Settings"
-              >
-                <Settings size={18} />
-              </button>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-primary-200 bg-primary-700 text-xs font-bold text-white">
-                LT
+          <div className="flex items-center justify-between gap-3">
+            <a href="#dashboard" className="flex items-center gap-2 lg:hidden" aria-label="Artha dashboard">
+              <img src={logoImg} alt="" className="h-9 w-9 rounded-lg object-contain" />
+              <div>
+                <p className="font-heading text-base font-bold leading-none text-primary-900">Artha</p>
+                <p className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.16em] text-secondary-500">Support</p>
               </div>
+            </a>
+            <div className="flex items-center gap-2">
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-bold text-primary-950">{profile?.full_name || 'Teacher'}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary-500">{profile?.role || 'teacher'}</p>
+              </div>
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-primary-200 bg-primary-700 text-xs font-bold text-white transition hover:bg-primary-800"
+                aria-label="Open teacher profile"
+              >
+                {initials}
+              </button>
             </div>
           </div>
         </header>
@@ -173,9 +200,32 @@ export default function AppShell({ activeView, children }) {
         {children}
       </div>
 
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-primary-200 bg-white/95 px-2 py-2 shadow-[0_-12px_30px_rgba(15,23,66,0.08)] backdrop-blur lg:hidden" aria-label="Mobile navigation">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = item.href === `#${activeView}`
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-bold transition ${
+                  isActive
+                    ? 'bg-primary-700 text-white'
+                    : 'text-secondary-600 hover:bg-primary-50 hover:text-primary-800'
+                }`}
+              >
+                <Icon size={17} aria-hidden="true" />
+                <span className="w-full truncate text-center">{item.label.replace('Student ', '').replace('Class ', '').replace(' CSV', '')}</span>
+              </a>
+            )
+          })}
+        </div>
+      </nav>
+
       {/* Global Upload Toast */}
       {uploadStatus && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl bg-white p-4 shadow-2xl border border-primary-200 animate-in slide-in-from-bottom-5">
+        <div className="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-primary-200 bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-5 lg:bottom-6 lg:right-6">
           <div className="flex items-start gap-3">
             {uploadStatus.loading ? (
               <Loader2 size={20} className="animate-spin text-primary-600 mt-0.5 shrink-0" />
@@ -189,14 +239,75 @@ export default function AppShell({ activeView, children }) {
               <p className="text-xs text-secondary-600 mt-0.5 line-clamp-2">{uploadStatus.message}</p>
             </div>
             {!uploadStatus.loading && (
-              <button onClick={() => setUploadStatus(null)} className="text-secondary-400 hover:text-primary-950">
+              <button onClick={() => dismissUploadTaskStatus()} className="text-secondary-400 hover:text-primary-950">
                 <X size={16} />
               </button>
             )}
           </div>
         </div>
       )}
+
+      {profileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary-950/60 p-4 backdrop-blur-sm">
+          <form onSubmit={handleProfileSubmit} className="w-full max-w-md rounded-2xl border border-primary-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-primary-100 px-6 py-4">
+              <div>
+                <h2 className="font-heading text-xl font-bold text-primary-950">Profil Guru</h2>
+                <p className="mt-1 text-xs font-semibold text-secondary-500">Kelola identitas akun pengajar.</p>
+              </div>
+              <button type="button" onClick={() => setProfileOpen(false)} className="rounded-lg p-2 text-secondary-400 transition hover:bg-primary-100 hover:text-primary-950">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <div className="flex items-center gap-3 rounded-xl border border-primary-100 bg-primary-50 p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-700 text-sm font-bold text-white">{initials}</div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-primary-950">{profile?.full_name || 'Teacher'}</p>
+                  <p className="truncate text-xs font-semibold text-secondary-500">{profile?.role || 'teacher'}</p>
+                </div>
+              </div>
+
+              {profileError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  {profileError}
+                </div>
+              )}
+
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">Nama Lengkap</span>
+                <input
+                  value={profileForm.fullName}
+                  onChange={(e) => setProfileForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                  className="mt-1.5 w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2.5 text-sm text-primary-950 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-2 focus:ring-primary-200"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">Username</span>
+                <input
+                  value={profileForm.username}
+                  onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
+                  className="mt-1.5 w-full rounded-xl border border-secondary-200 bg-primary-50/50 px-3 py-2.5 text-sm text-primary-950 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-2 focus:ring-primary-200"
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-primary-100 px-6 py-4">
+              <button type="button" onClick={() => setProfileOpen(false)} disabled={profileLoading} className="rounded-xl px-4 py-2 text-sm font-semibold text-secondary-600 transition hover:bg-secondary-50">
+                Batal
+              </button>
+              <button type="submit" disabled={profileLoading} className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-800 disabled:opacity-60">
+                {profileLoading ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />}
+                Simpan Profil
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   )
 }
-

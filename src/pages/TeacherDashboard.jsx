@@ -79,6 +79,54 @@ function RiskBadge({ risk }) {
   )
 }
 
+function PriorityStudentCard({ item }) {
+  const student = item.student
+  const prediction = item.prediction
+  const gpa = student?.gpa != null ? Number(student.gpa).toFixed(2) : 'N/A'
+  const attendance = student?.attendance_rate != null ? `${Number(student.attendance_rate).toFixed(1)}%` : 'N/A'
+  const confidence = prediction?.confidence_pct != null ? `${Number(prediction.confidence_pct).toFixed(1)}%` : 'N/A'
+  const riskLevel = prediction?.risk_level || 'Unknown'
+  const initials = (student?.student_identifier || 'XX').substring(0, 2).toUpperCase()
+  const isLowGpa = student?.gpa != null && Number(student.gpa) < 2.5
+
+  return (
+    <article className="rounded-2xl border border-primary-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-xs font-bold text-primary-700">
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-primary-950">{student?.student_identifier || 'Unknown'}</p>
+            <p className="mt-0.5 text-xs text-secondary-500">Grade {student?.grade} - Age {student?.age}</p>
+          </div>
+        </div>
+        <RiskBadge risk={riskLevel} />
+      </div>
+      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-xl bg-primary-50 px-2 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-secondary-500">GPA</dt>
+          <dd className={`mt-1 text-sm font-bold ${isLowGpa ? 'text-red-600' : 'text-primary-950'}`}>{gpa}</dd>
+        </div>
+        <div className="rounded-xl bg-primary-50 px-2 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-secondary-500">Attend</dt>
+          <dd className="mt-1 text-sm font-bold text-primary-950">{attendance}</dd>
+        </div>
+        <div className="rounded-xl bg-primary-50 px-2 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-secondary-500">Conf.</dt>
+          <dd className="mt-1 text-sm font-bold text-primary-950">{confidence}</dd>
+        </div>
+      </dl>
+      <a
+        href={`#student/${student?.student_id}`}
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-primary-700 px-3.5 text-xs font-bold uppercase tracking-[0.1em] text-primary-700 transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
+      >
+        View Profile
+      </a>
+    </article>
+  )
+}
+
 function LoadingSkeleton() {
   return (
     <section className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
@@ -229,13 +277,23 @@ export default function TeacherDashboard() {
 
         {/* Priority Student Table */}
         <section className="mt-8 overflow-hidden rounded-2xl border border-primary-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-primary-100 px-6 py-5">
+          <div className="flex flex-col gap-3 border-b border-primary-100 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <h3 className="font-heading text-xl font-bold text-primary-950">Priority Student Roster</h3>
             <a href="#roster" className="inline-flex items-center gap-2 text-sm font-semibold text-primary-700 transition hover:text-primary-800">
               <Filter size={15} /> View All Students
             </a>
           </div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 bg-primary-50/40 p-4 md:hidden">
+            {priorityStudents.map((item) => (
+              <PriorityStudentCard key={item.student?.student_id} item={item} />
+            ))}
+            {priorityStudents.length === 0 && (
+              <div className="rounded-2xl border border-primary-200 bg-white px-6 py-10 text-center text-sm font-medium text-secondary-500">
+                No student data available yet.
+              </div>
+            )}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-[920px] w-full border-collapse text-left">
               <thead className="bg-primary-50 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-600">
                 <tr>
@@ -244,7 +302,7 @@ export default function TeacherDashboard() {
                   <th className="px-6 py-4">Attendance Rate</th>
                   <th className="px-6 py-4">Confidence</th>
                   <th className="px-6 py-4">Risk Level</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="min-w-[150px] px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-100 text-sm">
@@ -275,10 +333,10 @@ export default function TeacherDashboard() {
                       <td className="px-6 py-4 font-medium text-secondary-600">{attendance}</td>
                       <td className="px-6 py-4 font-medium text-secondary-600">{confidence}</td>
                       <td className="px-6 py-4"><RiskBadge risk={riskLevel} /></td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="min-w-[150px] px-6 py-4 text-right">
                         <a
                           href={`#student/${student?.student_id}`}
-                          className="rounded-xl border border-primary-700 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-700 transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
+                          className="inline-flex whitespace-nowrap rounded-xl border border-primary-700 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-700 transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
                         >
                           View Profile
                         </a>

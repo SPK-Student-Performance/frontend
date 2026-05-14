@@ -46,8 +46,12 @@ export async function addStudent(studentData) {
 /**
  * Update an existing student and trigger AI prediction
  */
-export async function updateStudent(studentId, studentData, isNewAssessment = false) {
-  const url = `/students/${studentId}${isNewAssessment ? '?new_assessment=true' : ''}`
+export async function updateStudent(studentId, studentData, isNewAssessment = false, replacePredictionId = '') {
+  const params = new URLSearchParams()
+  if (isNewAssessment) params.set('new_assessment', 'true')
+  if (replacePredictionId) params.set('replace_prediction_id', replacePredictionId)
+  const qs = params.toString()
+  const url = `/students/${studentId}${qs ? `?${qs}` : ''}`
   return api.put(url, studentData)
 }
 

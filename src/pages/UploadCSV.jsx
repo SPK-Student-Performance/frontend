@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   CheckCircle2,
@@ -9,21 +9,41 @@ import {
   XCircle,
 } from 'lucide-react'
 import AppShell from '../components/AppShell'
-import { uploadCSV } from '../services/uploadService'
+import {
+  clearUploadTaskResult,
+  getUploadTaskSnapshot,
+  startCSVUpload,
+  subscribeUploadTask,
+} from '../services/uploadTaskStore'
 // @ts-ignore (ignore vite import warning if any)
 import sampleCsvUrl from '../assets/data_sample.csv?url'
 
 export default function UploadCSV() {
+  const initialUpload = getUploadTaskSnapshot()
   const [file, setFile] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(initialUpload.isUploading)
   const [error, setError] = useState('')
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState(initialUpload.result)
   const [dragActive, setDragActive] = useState(false)
+
+  useEffect(() => {
+    return subscribeUploadTask(({ status, result: taskResult }) => {
+      setLoading(Boolean(status?.loading))
+      setResult(taskResult)
+      if (status?.error) {
+        setError(status.message || 'Gagal mengupload file CSV.')
+      }
+      if (status?.loading) {
+        setError('')
+      }
+    })
+  }, [])
 
   const handleFileChange = (e) => {
     const selected = e.target.files?.[0]
     if (selected) {
       if (!selected.name.endsWith('.csv')) { setError('Format file harus CSV (.csv)'); setFile(null); return }
+      clearUploadTaskResult()
       setFile(selected); setError(''); setResult(null)
     }
   }
@@ -38,6 +58,7 @@ export default function UploadCSV() {
     const dropped = e.dataTransfer.files?.[0]
     if (dropped) {
       if (!dropped.name.endsWith('.csv')) { setError('Format file harus CSV (.csv)'); setFile(null); return }
+      clearUploadTaskResult()
       setFile(dropped); setError(''); setResult(null)
     }
   }
@@ -62,35 +83,13 @@ export default function UploadCSV() {
     if (!file) { setError('Pilih file CSV terlebih dahulu.'); return }
     
     setLoading(true); setError(''); setResult(null)
-    
-    // Dispatch global background upload event
-    window.dispatchEvent(new CustomEvent('csv-upload-status', {
-      detail: { loading: true, title: 'Mengupload CSV...', message: `Memproses ${file.name} di latar belakang.` }
-    }))
 
     try {
-      const data = await uploadCSV(file)
-      const predictions = data?.predictions || []
-      
-      const successMsg = data?.message || 'Upload berhasil!'
-      setResult({
-        message: successMsg,
-        total: predictions.length,
-        atRisk: predictions.filter((p) => p.is_at_risk).length,
-        predictions,
-      })
-      
-      window.dispatchEvent(new CustomEvent('csv-upload-status', {
-        detail: { loading: false, title: 'Upload Selesai', message: `${predictions.length} siswa berhasil diproses.` }
-      }))
-      
+      await startCSVUpload(file)
       setFile(null)
     } catch (err) { 
       const errMsg = err.message || 'Gagal mengupload file CSV.'
       setError(errMsg)
-      window.dispatchEvent(new CustomEvent('csv-upload-status', {
-        detail: { loading: false, error: true, title: 'Upload Gagal', message: errMsg }
-      }))
     } finally { 
       setLoading(false) 
     }
@@ -139,7 +138,7 @@ export default function UploadCSV() {
                   <button onClick={() => { window.location.hash = 'dashboard' }} className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800">
                     Lihat Dashboard
                   </button>
-                  <button onClick={() => { setResult(null); setFile(null) }} className="inline-flex items-center gap-2 rounded-xl border border-secondary-300 bg-white px-5 py-2.5 text-sm font-semibold text-secondary-600 hover:bg-secondary-50">
+                  <button onClick={() => { clearUploadTaskResult(); setResult(null); setFile(null) }} className="inline-flex items-center gap-2 rounded-xl border border-secondary-300 bg-white px-5 py-2.5 text-sm font-semibold text-secondary-600 hover:bg-secondary-50">
                     Upload File Lain
                   </button>
                 </div>
@@ -173,7 +172,7 @@ export default function UploadCSV() {
                     <p className="text-base font-bold text-primary-950">{file.name}</p>
                     <p className="mt-1 text-sm text-secondary-500">{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
-                  <button type="button" onClick={() => { setFile(null); setError('') }} className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700">
+                  <button type="button" onClick={() => { setFile(null); setError('') }} disabled={loading} className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60">
                     <XCircle size={14} /> Hapus File
                   </button>
                 </div>

@@ -8,6 +8,7 @@ import {
   Clock,
   Edit2,
   GraduationCap,
+  Plus,
   RefreshCw,
   Shield,
   ShieldAlert,
@@ -67,18 +68,36 @@ function InfoCard({ icon: Icon, label, value, tone = 'default' }) {
     blue: 'border-primary-200 bg-primary-50/60',
   }
   return (
-    <article className={`rounded-xl border p-4 ${toneMap[tone]}`}>
+    <article className={`min-w-0 rounded-xl border p-4 ${toneMap[tone]}`}>
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100">
           <Icon size={17} className="text-primary-700" />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-secondary-500">{label}</p>
-          <p className="mt-0.5 text-base font-bold text-primary-950">{value}</p>
+          <p className="mt-0.5 truncate text-base font-bold text-primary-950" title={String(value ?? '')}>{value}</p>
         </div>
       </div>
     </article>
   )
+}
+
+function formatNumber(value, digits = 1) {
+  if (value == null || value === '') return 'N/A'
+  const number = Number(value)
+  if (Number.isNaN(number)) return 'N/A'
+  return number.toFixed(digits)
+}
+
+function formatDate(value) {
+  if (!value) return 'Unknown time'
+  return new Date(value).toLocaleString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function FlagChip({ flag }) {
@@ -177,8 +196,10 @@ export default function StudentDetail({ studentId }) {
   const handleUpdate = async (updatedData) => {
     setIsSubmitting(true)
     try {
-      await updateStudent(studentId, updatedData, isNewAssessmentMode)
+      const replacePredictionId = isNewAssessmentMode ? '' : prediction?.prediction_id
+      await updateStudent(studentId, updatedData, isNewAssessmentMode, replacePredictionId)
       setIsEditModalOpen(false)
+      setIsNewAssessmentMode(false)
       fetchData() // Refresh student data
     } catch (err) {
       alert(err.message || 'Gagal mengupdate data siswa')
@@ -202,11 +223,13 @@ export default function StudentDetail({ studentId }) {
   if (error) return <AppShell activeView=""><ErrorState message={error} onRetry={fetchData} /></AppShell>
 
   const student = data?.student
-  const interventions = data?.interventions || []
   const history = data?.history || []
   
   // Use active history prediction or fallback to data.prediction
   const prediction = history[activeHistoryIndex] || data?.prediction
+  const viewedStudent = prediction?.student_snapshot || student
+  const isViewingHistoricalAssessment = activeHistoryIndex > 0
+  const selectedInterventions = prediction?.interventions?.length ? prediction.interventions : (data?.interventions || [])
 
   if (!student) return <AppShell activeView=""><ErrorState message="Data siswa tidak ditemukan." onRetry={fetchData} /></AppShell>
 
@@ -217,13 +240,14 @@ export default function StudentDetail({ studentId }) {
   const modelConsistent = prediction?.model_consistent
   const uiStatus = prediction?.ui_status || riskLevel
   const riskStatus = prediction?.risk_status
-  const initials = (student.student_identifier || 'XX').substring(0, 2).toUpperCase()
+  const initials = (viewedStudent.student_identifier || 'XX').substring(0, 2).toUpperCase()
 
   // Prepare chart data (reverse to show chronological order)
   const chartData = [...history].reverse().map((h, i) => ({
     name: `T${i+1}`,
-    risk: h.risk_probability * 100,
+    risk: Number((h.risk_probability * 100).toFixed(1)),
     date: new Date(h.created_at).toLocaleDateString(),
+    label: formatDate(h.created_at),
     originalIndex: history.length - 1 - i // Keep track of the original index in the 'history' array (which is DESC)
   }))
 
@@ -248,25 +272,17 @@ export default function StudentDetail({ studentId }) {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-xl font-extrabold text-primary-950 shadow-sm">{initials}</div>
               <div>
                 <h2 className="font-heading text-2xl font-extrabold text-primary-950">
-                  {student.student_identifier}
-                  {activeHistoryIndex > 0 && <span className="ml-3 inline-flex items-center rounded-lg bg-white/60 px-2 py-0.5 text-xs font-bold text-secondary-700 border border-secondary-200">Viewing History: T{chartData.find(c => c.originalIndex === activeHistoryIndex)?.name.replace('T', '')}</span>}
+                  {viewedStudent.student_identifier}
+                  {isViewingHistoricalAssessment && <span className="ml-3 inline-flex items-center rounded-lg bg-white/60 px-2 py-0.5 text-xs font-bold text-secondary-700 border border-secondary-200">Viewing History: {new Date(prediction.created_at).toLocaleString()}</span>}
                 </h2>
                 <p className="mt-1 text-sm text-secondary-600">ID: {student.student_id?.substring(0, 8)}...</p>
                 {uiStatus && <p className="mt-1 text-sm font-semibold text-secondary-700">Status: {uiStatus}</p>}
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <div className="flex items-center gap-2">
-                <button onClick={() => { setIsNewAssessmentMode(true); setIsEditModalOpen(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-primary-700 bg-primary-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-800 transition shadow-sm">
-                  <TrendingUp size={14} /> Add Assessment
-                </button>
-                <button onClick={() => { setIsNewAssessmentMode(false); setIsEditModalOpen(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-white/50 px-3 py-1.5 text-xs font-bold text-primary-700 hover:bg-white transition">
-                  <Edit2 size={14} /> Edit
-                </button>
-                <button onClick={handleDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white/50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-white transition">
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
+              <button onClick={handleDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white/50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-white transition">
+                <Trash2 size={14} /> Delete
+              </button>
               <span className={`mt-2 inline-flex rounded-full border px-4 py-2 text-sm font-bold ${riskBadgeStyles[riskLevel] || 'border-secondary-300 bg-secondary-100 text-secondary-800'}`}>
                 {riskLevel} Risk
               </span>
@@ -277,32 +293,84 @@ export default function StudentDetail({ studentId }) {
           </div>
         </div>
 
+        {/* TOPSIS Interventions */}
+        {selectedInterventions.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-primary-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Award size={20} className="text-primary-700" />
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-primary-950">TOPSIS Recommendation</h3>
+                  <p className="mt-0.5 text-sm text-secondary-600">Rekomendasi untuk assessment yang sedang dipilih.</p>
+                </div>
+              </div>
+              {prediction?.created_at && <span className="text-xs font-semibold text-secondary-500">{formatDate(prediction.created_at)}</span>}
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              {[...selectedInterventions].sort((a, b) => a.rank - b.rank).map((intv, i) => (
+                <InterventionRankCard key={intv.log_id || i} intervention={intv} index={i} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Main Grid */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
-            <h3 className="font-heading text-lg font-bold text-primary-950">Student Data</h3>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-primary-950">Student Data</h3>
+                <p className="mt-0.5 text-xs font-semibold text-secondary-500">
+                  {prediction?.created_at ? `Assessment: ${formatDate(prediction.created_at)}` : 'Assessment terbaru'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {history.length > 0 && (
+                  <label className="relative">
+                    <span className="sr-only">Pilih versi assessment</span>
+                    <select
+                      value={activeHistoryIndex}
+                      onChange={(e) => setActiveHistoryIndex(Number(e.target.value))}
+                      className="h-8 min-w-[150px] rounded-lg border border-primary-200 bg-white px-3 text-xs font-bold text-primary-800 outline-none transition hover:bg-primary-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                    >
+                      {history.map((item, index) => (
+                        <option key={item.prediction_id || index} value={index}>
+                          {index === 0 ? 'Latest' : `V${history.length - index}`} - {formatDate(item.created_at)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <button onClick={() => { setIsNewAssessmentMode(true); setIsEditModalOpen(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-primary-700 bg-primary-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-primary-800">
+                  <Plus size={14} /> Add
+                </button>
+                <button onClick={() => { setIsNewAssessmentMode(false); setIsEditModalOpen(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-bold text-primary-700 transition hover:bg-primary-50">
+                  <Edit2 size={14} /> Edit
+                </button>
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <InfoCard icon={User} label="Age" value={student.age} />
-              <InfoCard icon={GraduationCap} label="Grade" value={student.grade} />
-              <InfoCard icon={User} label="Gender" value={student.gender || 'N/A'} />
-              <InfoCard icon={BookOpen} label="GPA" value={student.gpa != null ? Number(student.gpa).toFixed(2) : 'N/A'} tone={student.gpa != null && Number(student.gpa) < 2.5 ? 'red' : 'default'} />
-              <InfoCard icon={Clock} label="Attendance" value={student.attendance_rate != null ? `${Number(student.attendance_rate).toFixed(1)}%` : 'N/A'} tone={student.attendance_rate != null && Number(student.attendance_rate) < 80 ? 'red' : 'green'} />
-              <InfoCard icon={TrendingUp} label="Study Hours" value={`${student.study_hours || 0}h`} />
-              <InfoCard icon={BookOpen} label="Math" value={Number(student.test_score_math || 0).toFixed(1)} />
-              <InfoCard icon={BookOpen} label="Reading" value={Number(student.test_score_reading || 0).toFixed(1)} />
-              <InfoCard icon={BookOpen} label="Science" value={Number(student.test_score_science || 0).toFixed(1)} />
+              <InfoCard icon={User} label="Age" value={viewedStudent.age} />
+              <InfoCard icon={GraduationCap} label="Grade" value={viewedStudent.grade} />
+              <InfoCard icon={User} label="Gender" value={viewedStudent.gender || 'N/A'} />
+              <InfoCard icon={BookOpen} label="GPA" value={formatNumber(viewedStudent.gpa, 2)} tone={viewedStudent.gpa != null && Number(viewedStudent.gpa) < 2.5 ? 'red' : 'default'} />
+              <InfoCard icon={Clock} label="Attendance" value={viewedStudent.attendance_rate != null ? `${formatNumber(viewedStudent.attendance_rate, 1)}%` : 'N/A'} tone={viewedStudent.attendance_rate != null && Number(viewedStudent.attendance_rate) < 80 ? 'red' : 'green'} />
+              <InfoCard icon={TrendingUp} label="Study Hours" value={`${formatNumber(viewedStudent.study_hours, 1)}h`} />
+              <InfoCard icon={BookOpen} label="Math" value={formatNumber(viewedStudent.test_score_math, 1)} />
+              <InfoCard icon={BookOpen} label="Reading" value={formatNumber(viewedStudent.test_score_reading, 1)} />
+              <InfoCard icon={BookOpen} label="Science" value={formatNumber(viewedStudent.test_score_science, 1)} />
             </div>
 
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { label: 'School Type', value: student.school_type || 'N/A' },
-                { label: 'Locale', value: student.locale || 'N/A' },
-                { label: 'SES Quartile', value: student.ses_quartile || 'N/A' },
-                { label: 'Parental Edu', value: student.parental_education || 'N/A' },
-                { label: 'Internet', value: student.internet_access ? 'Yes' : 'No' },
-                { label: 'Extracurricular', value: student.extracurricular ? 'Yes' : 'No' },
-                { label: 'Part-Time Job', value: student.part_time_job ? 'Yes' : 'No' },
-                { label: 'Parent Support', value: student.parent_support ? 'Yes' : 'No' },
+                { label: 'School Type', value: viewedStudent.school_type || 'N/A' },
+                { label: 'Locale', value: viewedStudent.locale || 'N/A' },
+                { label: 'SES Quartile', value: viewedStudent.ses_quartile || 'N/A' },
+                { label: 'Parental Edu', value: viewedStudent.parental_education || 'N/A' },
+                { label: 'Internet', value: viewedStudent.internet_access ? 'Yes' : 'No' },
+                { label: 'Extracurricular', value: viewedStudent.extracurricular ? 'Yes' : 'No' },
+                { label: 'Part-Time Job', value: viewedStudent.part_time_job ? 'Yes' : 'No' },
+                { label: 'Parent Support', value: viewedStudent.parent_support ? 'Yes' : 'No' },
               ].map((attr) => (
                 <div key={attr.label} className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3">
                   <p className="text-[9px] font-bold uppercase tracking-wide text-secondary-500">{attr.label}</p>
@@ -376,23 +444,23 @@ export default function StudentDetail({ studentId }) {
           </section>
         )}
 
-        {/* TOPSIS Interventions */}
-        {interventions.length > 0 && (
+        {/* TOPSIS Detail */}
+        {selectedInterventions.length > 0 && (
           <section className="mt-8">
             <div className="mb-4 flex items-center gap-2">
               <Award size={20} className="text-primary-700" />
-              <h3 className="font-heading text-lg font-bold text-primary-950">TOPSIS Intervention Ranking</h3>
+              <h3 className="font-heading text-lg font-bold text-primary-950">TOPSIS Detail Score</h3>
             </div>
             <p className="mb-4 text-sm text-secondary-600">Recommended interventions ranked by TOPSIS multi-criteria decision analysis score.</p>
             <div className="space-y-3">
-              {interventions.sort((a, b) => a.rank - b.rank).map((intv, i) => (
+              {[...selectedInterventions].sort((a, b) => a.rank - b.rank).map((intv, i) => (
                 <InterventionRankCard key={intv.log_id || i} intervention={intv} index={i} />
               ))}
             </div>
           </section>
         )}
 
-        {interventions.length === 0 && (
+        {selectedInterventions.length === 0 && (
           <section className="mt-8 rounded-2xl border border-primary-200 bg-primary-50 px-6 py-10 text-center">
             <Shield size={32} className="mx-auto mb-3 text-secondary-300" />
             <p className="text-sm font-semibold text-secondary-500">No intervention recommendations available for this student.</p>
@@ -401,10 +469,13 @@ export default function StudentDetail({ studentId }) {
 
         <StudentModal
           isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={() => { setIsEditModalOpen(false); setIsNewAssessmentMode(false) }}
           onSubmit={handleUpdate}
-          initialData={student}
+          initialData={viewedStudent}
           loading={isSubmitting}
+          title={isNewAssessmentMode ? 'Tambah Assessment Baru' : 'Edit Data Siswa'}
+          submitLabel={isNewAssessmentMode ? 'Simpan Assessment & Prediksi Ulang' : 'Simpan & Analisis Ulang'}
+          lockedFields={isNewAssessmentMode ? ['student_identifier'] : []}
         />
       </section>
     </AppShell>

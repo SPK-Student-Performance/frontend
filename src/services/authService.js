@@ -31,6 +31,14 @@ export async function register(username, password, fullName) {
   return api.post('/auth/register', { username, password, full_name: fullName })
 }
 
+export async function getCurrentUser() {
+  return api.get('/auth/me')
+}
+
+export async function updateProfile({ username, fullName }) {
+  return api.put('/auth/profile', { username, full_name: fullName })
+}
+
 /**
  * Logout: clear token and redirect to login.
  */

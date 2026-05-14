@@ -102,17 +102,17 @@ function AiHealthCard({ aiHealth }) {
           <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${isOnline ? 'bg-emerald-100' : 'bg-red-100'}`}>
             {isOnline ? <Activity size={24} className="text-emerald-600" /> : <AlertCircle size={24} className="text-red-600" />}
           </span>
-          <div>
+          <div className="min-w-0">
             <p className={`font-heading text-lg font-bold ${isOnline ? 'text-emerald-700' : 'text-red-700'}`}>{isOnline ? 'Online' : 'Offline'}</p>
-            <p className="text-sm text-secondary-500">{isOnline ? aiHealth?.message || 'AI Model is healthy' : aiHealth?.error || 'AI Model is unavailable'}</p>
+            <p className="break-words text-sm text-secondary-500">{isOnline ? aiHealth?.message || 'AI Model is healthy' : aiHealth?.error || 'AI Model is unavailable'}</p>
           </div>
         </div>
         {isOnline && aiHealth?.ai_info && (
           <div className="mt-4 space-y-2">
             {Object.entries(aiHealth.ai_info).map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between rounded-xl bg-primary-50 px-3 py-2">
-                <span className="text-xs font-semibold text-secondary-500">{k}</span>
-                <span className="text-xs font-bold text-primary-950">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+              <div key={k} className="flex items-start justify-between gap-3 rounded-xl bg-primary-50 px-3 py-2">
+                <span className="shrink-0 text-xs font-semibold text-secondary-500">{k}</span>
+                <span className="min-w-0 break-all text-right text-xs font-bold text-primary-950">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
               </div>
             ))}
           </div>
@@ -139,12 +139,12 @@ function TopRiskStudents({ students }) {
             {riskStudents.map((item) => {
               const s = item.student, p = item.prediction
               return (
-                <a key={s?.student_id} href={`#student/${s?.student_id}`} className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 transition hover:bg-red-100">
-                  <div>
-                    <p className="font-bold text-primary-950">{s?.student_identifier || 'Unknown'}</p>
+                <a key={s?.student_id} href={`#student/${s?.student_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 transition hover:bg-red-100">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-primary-950">{s?.student_identifier || 'Unknown'}</p>
                     <p className="mt-0.5 text-xs text-secondary-600">Grade {s?.grade} • Risk: {p?.risk_probability ? (p.risk_probability * 100).toFixed(1) : 0}%</p>
                   </div>
-                  <span className="rounded-full bg-red-200 px-2.5 py-1 text-xs font-bold text-red-800">High</span>
+                  <span className="shrink-0 rounded-full bg-red-200 px-2.5 py-1 text-xs font-bold text-red-800">High</span>
                 </a>
               )
             })}

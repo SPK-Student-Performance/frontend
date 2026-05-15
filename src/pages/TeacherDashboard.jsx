@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
+  ChevronDown,
   Filter,
   GraduationCap,
   RefreshCw,
@@ -17,6 +18,22 @@ const riskStyles = {
   High: 'bg-red-100 text-red-800 border border-red-200',
   Medium: 'bg-tertiary-100 text-tertiary-800 border border-tertiary-200',
   Low: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+}
+
+function FilterSelect({ label, options, value, onChange }) {
+  return (
+    <label className="relative block min-w-0">
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary-500">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1.5 h-10 w-full appearance-none rounded-xl bg-white px-3.5 pr-9 text-sm font-bold text-primary-950 outline-none ring-1 ring-primary-200 transition hover:ring-primary-300 focus:ring-2 focus:ring-primary-300"
+      >
+        {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+      <ChevronDown size={16} className="pointer-events-none absolute bottom-3 right-3 text-secondary-400" />
+    </label>
+  )
 }
 
 function SummaryCard({ card }) {
@@ -197,6 +214,8 @@ export default function TeacherDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [gradeFilter, setGradeFilter] = useState('All Classes')
+  const [genderFilter, setGenderFilter] = useState('All Genders')
 
   const fetchData = async () => {
     setLoading(true)
@@ -213,27 +232,78 @@ export default function TeacherDashboard() {
 
   useEffect(() => { fetchData() }, [])
 
-  if (loading) return <AppShell activeView="dashboard"><LoadingSkeleton /></AppShell>
-  if (error) return <AppShell activeView="dashboard"><ErrorState message={error} onRetry={fetchData} /></AppShell>
-
   const summary = data?.summary
   const students = data?.students || []
 
-  if (!summary || summary.total_students === 0) {
-    return <AppShell activeView="dashboard"><EmptyState /></AppShell>
-  }
+  const gradeOptions = useMemo(() => {
+    const grades = Array.from(new Set(students.map((item) => item.student?.grade).filter((grade) => grade != null)))
+      .sort((a, b) => Number(a) - Number(b))
+      .map((grade) => `Class ${grade}`)
+    return ['All Classes', ...grades]
+  }, [students])
 
-  const avgGpa = summary.average_gpa?.toFixed(2) || '0.00'
-  const avgAttendance = summary.average_attendance_pct?.toFixed(1) || '0.0'
+  const genderOptions = useMemo(() => {
+    const genders = Array.from(new Set(students.map((item) => item.student?.gender).filter(Boolean))).sort()
+    return ['All Genders', ...genders]
+  }, [students])
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((item) => {
+      const selectedGrade = gradeFilter.replace('Class ', '')
+      const matchesGrade = gradeFilter === 'All Classes' || String(item.student?.grade) === selectedGrade
+      const matchesGender = genderFilter === 'All Genders' || item.student?.gender === genderFilter
+      return matchesGrade && matchesGender
+    })
+  }, [students, gradeFilter, genderFilter])
+
+  const filteredSummary = useMemo(() => {
+    const total = filteredStudents.length
+    const riskDistribution = filteredStudents.reduce((acc, item) => {
+      const level = item.prediction?.risk_level
+      if (level === 'High') acc.high += 1
+      else if (level === 'Medium') acc.medium += 1
+      else if (level === 'Low') acc.low += 1
+      return acc
+    }, { high: 0, medium: 0, low: 0 })
+
+    const numericAverage = (items, getter) => {
+      const values = items
+        .map(getter)
+        .filter((value) => value != null && value !== '' && !Number.isNaN(Number(value)))
+        .map(Number)
+      if (values.length === 0) return 0
+      return values.reduce((sum, value) => sum + value, 0) / values.length
+    }
+
+    const totalAtRisk = filteredStudents.filter((item) => (
+      item.prediction?.is_at_risk === true ||
+      item.prediction?.risk_level === 'High' ||
+      item.prediction?.risk_level === 'Medium'
+    )).length
+
+    return {
+      total_students: total,
+      total_at_risk: totalAtRisk,
+      average_gpa: numericAverage(filteredStudents, (item) => item.student?.gpa),
+      average_attendance_pct: numericAverage(filteredStudents, (item) => item.student?.attendance_rate),
+      risk_distribution: riskDistribution,
+    }
+  }, [filteredStudents])
+
+  const avgGpa = filteredSummary.average_gpa.toFixed(2)
+  const avgAttendance = filteredSummary.average_attendance_pct.toFixed(1)
+  const activeFilterText = [gradeFilter, genderFilter]
+    .filter((value) => value !== 'All Classes' && value !== 'All Genders')
+    .join(' / ')
 
   const summaryCards = [
-    { label: 'Total Students', value: String(summary.total_students), detail: 'Active in system', icon: Users, tone: 'blue' },
-    { label: 'At-Risk Identified', value: String(summary.total_at_risk), detail: 'Requires immediate attention', icon: ShieldAlert, tone: 'red' },
+    { label: 'Total Students', value: String(filteredSummary.total_students), detail: 'Active in selected view', icon: Users, tone: 'blue' },
+    { label: 'At-Risk Identified', value: String(filteredSummary.total_at_risk), detail: 'Requires immediate attention', icon: ShieldAlert, tone: 'red' },
     { label: 'Avg. Attendance', value: `${avgAttendance}%`, detail: 'progress', icon: UserRoundCheck, tone: 'blue', progress: parseFloat(avgAttendance) },
     { label: 'Avg. GPA', value: avgGpa, detail: 'Out of 4.0 Scale', icon: GraduationCap, tone: 'neutral' },
   ]
 
-  const sortedStudents = [...students].sort((a, b) => {
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
     const riskOrder = { High: 0, Medium: 1, Low: 2 }
     const aRisk = riskOrder[a.prediction?.risk_level] ?? 3
     const bRisk = riskOrder[b.prediction?.risk_level] ?? 3
@@ -241,6 +311,13 @@ export default function TeacherDashboard() {
     return (b.prediction?.risk_probability || 0) - (a.prediction?.risk_probability || 0)
   })
   const priorityStudents = sortedStudents.slice(0, 10)
+
+  if (loading) return <AppShell activeView="dashboard"><LoadingSkeleton /></AppShell>
+  if (error) return <AppShell activeView="dashboard"><ErrorState message={error} onRetry={fetchData} /></AppShell>
+
+  if (!summary || summary.total_students === 0) {
+    return <AppShell activeView="dashboard"><EmptyState /></AppShell>
+  }
 
   return (
     <AppShell activeView="dashboard">
@@ -250,19 +327,37 @@ export default function TeacherDashboard() {
           <p className="mt-2 text-base text-secondary-600">Welcome back. Here is the latest academic data for your assigned cohorts.</p>
         </div>
 
+        <section className="mb-6 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Filter size={18} className="text-primary-700" />
+                <h3 className="font-heading text-base font-bold text-primary-950">Dashboard Filters</h3>
+              </div>
+              <p className="mt-1 text-sm text-secondary-600">
+                {activeFilterText ? `Showing insight for ${activeFilterText}.` : 'Showing insight for all classes and genders.'}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:w-[420px]">
+              <FilterSelect label="Class" options={gradeOptions} value={gradeFilter} onChange={setGradeFilter} />
+              <FilterSelect label="Gender" options={genderOptions} value={genderFilter} onChange={setGenderFilter} />
+            </div>
+          </div>
+        </section>
+
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((card) => <SummaryCard key={card.label} card={card} />)}
         </div>
 
         {/* Risk Distribution Bar */}
-        {summary.risk_distribution && (
+        {filteredSummary.risk_distribution && (
           <section className="mt-8 rounded-2xl border border-primary-200 bg-white p-6 shadow-sm">
             <h3 className="font-heading mb-4 text-base font-bold text-primary-950">Risk Distribution</h3>
             <div className="flex flex-wrap gap-6">
               {[
-                { label: 'High Risk', count: summary.risk_distribution.high, color: 'bg-red-500', text: 'text-red-700' },
-                { label: 'Medium Risk', count: summary.risk_distribution.medium, color: 'bg-tertiary-500', text: 'text-tertiary-700' },
-                { label: 'Low Risk', count: summary.risk_distribution.low, color: 'bg-emerald-500', text: 'text-emerald-700' },
+                { label: 'High Risk', count: filteredSummary.risk_distribution.high, color: 'bg-red-500', text: 'text-red-700' },
+                { label: 'Medium Risk', count: filteredSummary.risk_distribution.medium, color: 'bg-tertiary-500', text: 'text-tertiary-700' },
+                { label: 'Low Risk', count: filteredSummary.risk_distribution.low, color: 'bg-emerald-500', text: 'text-emerald-700' },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2.5">
                   <span className={`h-3 w-3 rounded-full ${item.color}`} />

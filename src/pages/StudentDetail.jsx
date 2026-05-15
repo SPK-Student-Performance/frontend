@@ -137,6 +137,20 @@ function InterventionRankCard({ intervention, index }) {
   )
 }
 
+function buildTopsisRecommendation({ interventions, riskLevel, riskProb, flags }) {
+  if (!interventions.length) return ''
+
+  const [primary, secondary, tertiary] = interventions
+  const primaryScore = primary?.preference_score != null ? (primary.preference_score * 100).toFixed(1) : 'N/A'
+  const supportList = [secondary, tertiary].filter(Boolean).map((item) => item.intervensi_name)
+  const flagText = flags.length > 0 ? ` Indikator yang perlu dipantau: ${flags.slice(0, 3).join(', ')}.` : ''
+  const supportText = supportList.length > 0
+    ? ` Rekomendasi pendukungnya adalah ${supportList.join(' dan ')} agar intervensi tidak hanya bertumpu pada satu area.`
+    : ''
+
+  return `Berdasarkan perhitungan TOPSIS, prioritas utama untuk assessment ini adalah ${primary.intervensi_name} dengan skor preferensi ${primaryScore}. Siswa berada pada kategori ${riskLevel} dengan probabilitas risiko ${riskProb}%, sehingga tindak lanjut awal dapat difokuskan pada rekomendasi peringkat tertinggi tersebut.${supportText}${flagText}`
+}
+
 function LoadingSkeleton() {
   return (
     <section className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
@@ -241,6 +255,13 @@ export default function StudentDetail({ studentId }) {
   const uiStatus = prediction?.ui_status || riskLevel
   const riskStatus = prediction?.risk_status
   const initials = (viewedStudent.student_identifier || 'XX').substring(0, 2).toUpperCase()
+  const sortedInterventions = [...selectedInterventions].sort((a, b) => a.rank - b.rank)
+  const topsisRecommendation = buildTopsisRecommendation({
+    interventions: sortedInterventions,
+    riskLevel,
+    riskProb,
+    flags,
+  })
 
   // Prepare chart data (reverse to show chronological order)
   const chartData = [...history].reverse().map((h, i) => ({
@@ -306,10 +327,20 @@ export default function StudentDetail({ studentId }) {
               </div>
               {prediction?.created_at && <span className="text-xs font-semibold text-secondary-500">{formatDate(prediction.created_at)}</span>}
             </div>
-            <div className="grid gap-3 lg:grid-cols-3">
-              {[...selectedInterventions].sort((a, b) => a.rank - b.rank).map((intv, i) => (
-                <InterventionRankCard key={intv.log_id || i} intervention={intv} index={i} />
-              ))}
+            <div className="rounded-2xl border border-primary-100 bg-primary-50 px-5 py-4">
+              <p className="text-sm leading-7 text-primary-950 sm:text-base">
+                {topsisRecommendation}
+              </p>
+              {sortedInterventions[0] && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-primary-700 ring-1 ring-primary-200">
+                    Priority: {sortedInterventions[0].intervensi_name}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-secondary-600 ring-1 ring-primary-200">
+                    TOPSIS {sortedInterventions[0].preference_score != null ? (sortedInterventions[0].preference_score * 100).toFixed(1) : 'N/A'}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -453,7 +484,7 @@ export default function StudentDetail({ studentId }) {
             </div>
             <p className="mb-4 text-sm text-secondary-600">Recommended interventions ranked by TOPSIS multi-criteria decision analysis score.</p>
             <div className="space-y-3">
-              {[...selectedInterventions].sort((a, b) => a.rank - b.rank).map((intv, i) => (
+              {sortedInterventions.map((intv, i) => (
                 <InterventionRankCard key={intv.log_id || i} intervention={intv} index={i} />
               ))}
             </div>

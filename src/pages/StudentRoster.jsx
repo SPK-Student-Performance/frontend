@@ -194,6 +194,7 @@ export default function StudentRoster() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
   
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -253,6 +254,7 @@ export default function StudentRoster() {
   }, [students])
 
   const handleExport = (format) => {
+    setIsExportMenuOpen(false)
     if (uniqueStudents.length === 0) return
 
     const exportData = sortedStudents.map(item => {
@@ -336,13 +338,26 @@ export default function StudentRoster() {
             <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 px-4 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800 sm:flex-none">
               <Plus size={16} /> Add Student
             </button>
-            <div className="group relative flex-1 sm:flex-none">
-              <button className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-secondary-300 bg-white px-4 text-sm font-bold text-secondary-700 shadow-sm transition hover:bg-secondary-50 sm:w-auto">
+            <div
+              className="relative flex-1 sm:flex-none"
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  setIsExportMenuOpen(false)
+                }
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen((open) => !open)}
+                aria-expanded={isExportMenuOpen}
+                aria-haspopup="menu"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-secondary-300 bg-white px-4 text-sm font-bold text-secondary-700 shadow-sm transition hover:bg-secondary-50 sm:w-auto"
+              >
                 <Download size={16} /> Export
               </button>
-              <div className="absolute right-0 top-full z-10 mt-2 hidden w-32 flex-col overflow-hidden rounded-xl border border-primary-200 bg-white shadow-lg group-hover:flex">
-                <button onClick={() => handleExport('csv')} className="px-4 py-2 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50">CSV</button>
-                <button onClick={() => handleExport('xlsx')} className="px-4 py-2 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50">Excel (XLSX)</button>
+              <div className={`absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-primary-200 bg-white shadow-lg ${isExportMenuOpen ? 'flex flex-col' : 'hidden'}`} role="menu">
+                <button type="button" onClick={() => handleExport('csv')} className="px-4 py-2.5 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50" role="menuitem">CSV</button>
+                <button type="button" onClick={() => handleExport('xlsx')} className="px-4 py-2.5 text-left text-sm font-semibold text-secondary-700 hover:bg-primary-50" role="menuitem">Excel (XLSX)</button>
               </div>
             </div>
           </div>

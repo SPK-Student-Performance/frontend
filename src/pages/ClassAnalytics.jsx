@@ -214,7 +214,7 @@ export default function ClassAnalytics() {
 
   const metricCards = [
     { label: 'Avg. GPA', value: summary.average_gpa?.toFixed(2) || '0.00', detail: 'Out of 4.0 Scale', icon: GraduationCap, tone: 'teal' },
-    { label: 'Avg. Attendance', value: `${summary.average_attendance_pct?.toFixed(1) || '0.0'}%`, detail: 'semester average', icon: Activity, tone: 'blue', progress: parseFloat(summary.average_attendance_pct?.toFixed(1) || '0') },
+    { label: 'Avg. Attendance', value: `${summary.average_attendance_pct?.toFixed(1) * 100 || '0.0'}%`, detail: 'semester average', icon: Activity, tone: 'blue', progress: parseFloat(summary.average_attendance_pct?.toFixed(1) * 100) },
     { label: 'Total Students', value: String(summary.total_students || 0), detail: 'Active in system', icon: Users, tone: 'violet' },
     { label: 'At-Risk Identified', value: String(summary.total_at_risk || 0), detail: 'Requires immediate attention', icon: AlertTriangle, tone: 'red' },
   ]

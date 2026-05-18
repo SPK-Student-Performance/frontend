@@ -299,7 +299,7 @@ export default function TeacherDashboard() {
   const summaryCards = [
     { label: 'Total Students', value: String(filteredSummary.total_students), detail: 'Active in selected view', icon: Users, tone: 'blue' },
     { label: 'At-Risk Identified', value: String(filteredSummary.total_at_risk), detail: 'Requires immediate attention', icon: ShieldAlert, tone: 'red' },
-    { label: 'Avg. Attendance', value: `${avgAttendance}%`, detail: 'progress', icon: UserRoundCheck, tone: 'blue', progress: parseFloat(avgAttendance) },
+    { label: 'Avg. Attendance', value: `${avgAttendance * 100}%`, detail: 'progress', icon: UserRoundCheck, tone: 'blue', progress: parseFloat(avgAttendance*100) },
     { label: 'Avg. GPA', value: avgGpa, detail: 'Out of 4.0 Scale', icon: GraduationCap, tone: 'neutral' },
   ]
 

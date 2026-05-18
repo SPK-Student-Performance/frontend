@@ -61,3 +61,10 @@ export async function updateStudent(studentId, studentData, isNewAssessment = fa
 export async function deleteStudent(studentId) {
   return api.delete(`/students/${studentId}`)
 }
+
+/**
+ * Delete all students and their related data
+ */
+export async function deleteAllStudents() {
+  return api.delete('/students')
+}

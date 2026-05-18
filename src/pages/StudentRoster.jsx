@@ -8,13 +8,13 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   Upload,
-  Users,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import AppShell from '../components/AppShell'
 import StudentModal from '../components/StudentModal'
-import { getStudents, addStudent } from '../services/studentService'
+import { getStudents, addStudent, deleteAllStudents } from '../services/studentService'
 
 const riskClasses = {
   High: 'border-red-200 bg-red-100 text-red-700',
@@ -195,6 +195,7 @@ export default function StudentRoster() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false)
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
   
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -239,6 +240,31 @@ export default function StudentRoster() {
       alert(err.message || 'Gagal menambahkan siswa')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteAllStudents = async () => {
+    const total = uniqueStudents.length
+    if (total === 0 || isDeletingAll) return
+
+    const confirmed = window.confirm(
+      `Yakin ingin menghapus semua data siswa (${total} siswa)? Semua prediksi dan riwayat intervensi juga akan dihapus dan tidak dapat dikembalikan.`
+    )
+    if (!confirmed) return
+
+    setIsDeletingAll(true)
+    try {
+      await deleteAllStudents()
+      setStudents([])
+      setSearchQuery('')
+      setRiskLevel('All Risk Levels')
+      setGradeFilter('All Grades')
+      setGenderFilter('All Genders')
+      setCurrentPage(1)
+    } catch (err) {
+      alert(err.message || 'Gagal menghapus semua data siswa')
+    } finally {
+      setIsDeletingAll(false)
     }
   }
 
@@ -335,6 +361,14 @@ export default function StudentRoster() {
             <p className="mt-2 max-w-3xl text-base leading-6 text-secondary-600">Prioritized list of unique students requiring intervention.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleDeleteAllStudents}
+              disabled={isDeletingAll || uniqueStudents.length === 0}
+              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            >
+              <Trash2 size={16} /> {isDeletingAll ? 'Deleting...' : 'Delete All'}
+            </button>
             <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 px-4 text-sm font-bold text-white shadow-md shadow-primary-700/25 transition hover:bg-primary-800 sm:flex-none">
               <Plus size={16} /> Add Student
             </button>

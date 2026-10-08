@@ -7,15 +7,18 @@ import StudentDetail from './pages/StudentDetail'
 import StudentRoster from './pages/StudentRoster'
 import TeacherDashboard from './pages/TeacherDashboard'
 import UploadCSV from './pages/UploadCSV'
+import PublicShell from './components/PublicShell'
+import Home from './pages/Home'
+import About from './pages/About'
 
-const publicRoutes = ['login', 'register']
+const publicRoutes = ['home', 'about', 'login', 'register']
 
 const getView = () => {
   const route = window.location.hash.replace('#', '')
 
   // Routes that don't need authentication
-  if (route === 'register') return 'register'
-  if (route === 'login' || route === '') return 'login'
+  if (route === '') return 'home'
+  if (publicRoutes.includes(route)) return route
 
   // Protected routes - require authentication
   if (!isAuthenticated()) {
@@ -60,6 +63,12 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    const titles = { home: 'Artha - Mendampingi Setiap Potensi', about: 'About - Artha', login: 'Login - Artha', register: 'Daftar - Artha' }
+    document.title = titles[view] || 'Artha - Student Decision Support System'
+  }, [view])
+
   if (view === 'dashboard') {
     return <TeacherDashboard />
   }
@@ -80,7 +89,11 @@ function App() {
     return <StudentDetail studentId={studentId} />
   }
 
-  return view === 'register' ? <Register /> : <Login />
+  return (
+    <PublicShell activeView={view}>
+      {view === 'home' ? <Home /> : view === 'about' ? <About /> : view === 'register' ? <Register /> : <Login />}
+    </PublicShell>
+  )
 }
 
 export default App

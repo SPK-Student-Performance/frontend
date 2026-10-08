@@ -42,7 +42,7 @@ export default function Register() {
     'w-full rounded-xl border border-secondary-200 bg-primary-50/50 py-3 pl-10 pr-3 text-sm text-primary-950 placeholder:text-secondary-400 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:opacity-60'
 
   return (
-    <main className="min-h-screen bg-primary-50 px-4 py-10 sm:px-6">
+    <main className="auth-page min-h-screen bg-primary-50 px-4 py-10 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
         <section className="w-full text-center" aria-label="Artha register">
           <article className="rounded-2xl border border-primary-200 bg-white p-6 shadow-lg shadow-primary-200/40 sm:p-8">

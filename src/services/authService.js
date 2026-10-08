@@ -3,7 +3,7 @@
  * Handles user authentication (login & register).
  */
 
-import { api, setToken, removeToken } from './api'
+import { api, ApiError, setToken, removeToken } from './api'
 
 /**
  * Login with username and password.
@@ -14,9 +14,8 @@ import { api, setToken, removeToken } from './api'
  */
 export async function login(username, password) {
   const data = await api.post('/auth/login', { username, password })
-  if (data.token) {
-    setToken(data.token)
-  }
+  if (!data?.token) throw new ApiError('Respons login tidak berisi token. Periksa konfigurasi backend.', 502)
+  setToken(data.token)
   return data
 }
 

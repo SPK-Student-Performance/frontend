@@ -4,7 +4,7 @@
  * All protected endpoints automatically include Authorization: Bearer <token>.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || '/api/v1').replace(/\/+$/, '')
 
 /**
  * Get the stored JWT token from localStorage.
@@ -71,18 +71,22 @@ export async function apiRequest(endpoint, options = {}) {
   try {
     const response = await fetch(url, config)
 
-    // Handle 401 Unauthorized -> clear token and redirect to login
-    if (response.status === 401) {
+    const data = response.status === 204 ? null : await response.json().catch(() => null)
+
+    // Only authenticated requests can expire an existing session.
+    if (response.status === 401 && token && !endpoint.startsWith('/auth/login')) {
       removeToken()
       window.location.hash = 'login'
       throw new ApiError('Session expired. Please log in again.', 401)
     }
 
-    const data = await response.json().catch(() => null)
-
     if (!response.ok) {
       const message = data?.error || data?.message || `Request failed with status ${response.status}`
       throw new ApiError(message, response.status, data)
+    }
+
+    if (response.status !== 204 && data === null) {
+      throw new ApiError('Server tidak mengembalikan respons API yang valid. Periksa alamat API backend.', response.status)
     }
 
     return data

@@ -1,0 +1,22 @@
+.public-site {
+  --color-site-paper: oklch(99% 0.003 170);
+  --color-site-white: oklch(100% 0 0);
+  --color-site-ink: oklch(25% 0.035 170);
+  --color-site-muted: oklch(47% 0.02 170);
+  --color-site-green: oklch(39% 0.08 170);
+  --color-site-green-hover: oklch(31% 0.075 170);
+  --color-site-mint: oklch(94% 0.032 165);
+  --color-site-rule: oklch(88% 0.012 170);
+  --color-site-blue: oklch(52% 0.16 265);
+  --color-site-wash: oklch(99% 0.003 170 / 0.97);
+  --color-site-shadow: oklch(25% 0.035 170 / 0.08);
+  --font-site-display: var(--font-heading);
+  --font-site-body: var(--font-body);
+  --space-site-sm: 12px;
+  --space-site-md: 24px;
+  --space-site-lg: 40px;
+  --space-site-xl: 80px;
+  --radius-site: 6px;
+  --ease-site-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-site: 160ms;
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, Loader2, Lock, Mail } from 'lucide-react'
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail } from 'lucide-react'
 import { login } from '../services/authService'
 import logoImg from '../assets/logo_teks.png'
 
@@ -25,24 +25,20 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-primary-50 px-4 py-10 sm:px-6">
+    <main className="auth-page min-h-screen bg-primary-50 px-4 py-10 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
         <section className="w-full text-center" aria-label="Artha login">
           <article className="rounded-2xl border border-primary-200 bg-white p-6 shadow-lg shadow-primary-200/40 sm:p-8">
             {/* Logo */}
             <img src={logoImg} alt="Artha Logo" className="mx-auto mb-5 h-48 w-full object-contain" />
 
-            {/* <header className="mb-7">
-              <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-950">
-                Artha
-              </h1>
-              <p className="mt-1.5 text-xs font-semibold tracking-widest text-secondary-500 uppercase">
-                Student Decision Support System
-              </p>
-            </header> */}
+            <header className="mb-7">
+              <h1 className="text-2xl font-bold text-primary-950">Selamat datang kembali</h1>
+              <p className="mt-2 text-sm text-secondary-600">Masuk ke akun Artha Anda.</p>
+            </header>
 
             {error && (
-              <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
+              <div role="alert" className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>{error}</span>
               </div>
@@ -85,12 +81,6 @@ export default function Login() {
                   >
                     Password
                   </label>
-                  <a
-                    href="#"
-                    className="text-[10px] font-semibold text-tertiary-700 transition hover:text-tertiary-600 focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-tertiary-200"
-                  >
-                    Forgot Password?
-                  </a>
                 </div>
                 <div className="relative">
                   <Lock
@@ -124,7 +114,7 @@ export default function Login() {
                     Signing In...
                   </>
                 ) : (
-                  <>Sign In →</>
+                  <>Sign In <ArrowRight size={15} aria-hidden="true" /></>
                 )}
               </button>
             </form>
